@@ -24,9 +24,11 @@ export class AiAgentService {
   private conversationHistory: Map<string, any[]> = new Map();
 
   // URL base de nuestra API
-  private readonly apiBaseUrl = 'http://localhost:3000';
+  private readonly apiBaseUrl: string;
 
   constructor(private configService: ConfigService) {
+    // Configurar URL base según el entorno
+    this.apiBaseUrl = this.configService.get<string>('API_BASE_URL') || 'http://localhost:3000';
     // Inicializar Gemini con la API Key del .env
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (!apiKey) {
