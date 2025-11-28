@@ -154,15 +154,20 @@ SÉ CONSULTIVO: ayudá al usuario a encontrar exactamente lo que busca.`,
       // 7. Obtener la respuesta final de texto
       const finalText = response.text();
 
-      // 8. Guardar historial (últimos 20 mensajes para no exceder contexto)
-      userHistory.push(
-        { role: 'user', parts: [{ text: message }] },
-        { role: 'model', parts: [{ text: finalText }] },
-      );
+      // 8. Obtener el historial completo de Gemini (incluye function calls)
+      // Esto es mejor que construirlo manualmente porque Gemini ya lo tiene en el formato correcto
+      const fullHistory = await chat.getHistory();
 
-      // Mantener solo últimos 20 mensajes
-      if (userHistory.length > 20) {
-        userHistory.splice(0, userHistory.length - 20);
+      // Reemplazar el historial del usuario con el historial completo de Gemini
+      this.conversationHistory.set(userId, fullHistory);
+
+      // Mantener solo últimos 20 mensajes para no exceder límites
+      const currentHistory = this.conversationHistory.get(userId)!;
+      if (currentHistory.length > 20) {
+        this.conversationHistory.set(
+          userId,
+          currentHistory.slice(currentHistory.length - 20),
+        );
       }
 
       this.logger.log(`💬 Respuesta generada: ${finalText.substring(0, 100)}...`);
