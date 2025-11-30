@@ -109,18 +109,22 @@ SÉ CONSULTIVO: ayudá al usuario a encontrar exactamente lo que busca.`,
         this.conversationHistory.set(userId, []);
       }
 
-      const userHistory = this.conversationHistory.get(userId)!;
+      let userHistory = this.conversationHistory.get(userId)!;
 
-      // 2. Crear sesión de chat con historial
+      // 2. Validar y limpiar historial antes de usarlo
+      userHistory = this.cleanHistory(userHistory);
+      this.conversationHistory.set(userId, userHistory);
+
+      // 3. Crear sesión de chat con historial limpio
       const chat = this.model.startChat({
         history: userHistory,
       });
 
-      // 3. Enviar mensaje del usuario a Gemini
+      // 4. Enviar mensaje del usuario a Gemini
       let result = await chat.sendMessage(message);
       let response = result.response;
 
-      // 4. Manejar function calls (si Gemini decide usar herramientas)
+      // 5. Manejar function calls (si Gemini decide usar herramientas)
       // Este loop se ejecuta mientras Gemini quiera llamar funciones
       while (response.candidates[0].content.parts.some((part) => part.functionCall)) {
         const functionCall = response.candidates[0].content.parts.find(
@@ -130,7 +134,7 @@ SÉ CONSULTIVO: ayudá al usuario a encontrar exactamente lo que busca.`,
         this.logger.log(`🔧 Gemini llamó a: ${functionCall.name}`);
         this.logger.debug(`   Argumentos: ${JSON.stringify(functionCall.args)}`);
 
-        // 5. Ejecutar la función solicitada
+        // 6. Ejecutar la función solicitada
         const functionResponse = await this.executeFunction(
           functionCall.name,
           functionCall.args,
@@ -138,7 +142,7 @@ SÉ CONSULTIVO: ayudá al usuario a encontrar exactamente lo que busca.`,
 
         this.logger.debug(`   Resultado: ${JSON.stringify(functionResponse).substring(0, 200)}...`);
 
-        // 6. Enviar el resultado de la función de vuelta a Gemini
+        // 7. Enviar el resultado de la función de vuelta a Gemini
         result = await chat.sendMessage([
           {
             functionResponse: {
@@ -151,10 +155,10 @@ SÉ CONSULTIVO: ayudá al usuario a encontrar exactamente lo que busca.`,
         response = result.response;
       }
 
-      // 7. Obtener la respuesta final de texto
+      // 8. Obtener la respuesta final de texto
       const finalText = response.text();
 
-      // 8. Obtener el historial completo de Gemini (incluye function calls)
+      // 9. Obtener el historial completo de Gemini (incluye function calls)
       // Esto es mejor que construirlo manualmente porque Gemini ya lo tiene en el formato correcto
       const fullHistory = await chat.getHistory();
 
@@ -164,10 +168,10 @@ SÉ CONSULTIVO: ayudá al usuario a encontrar exactamente lo que busca.`,
       // Mantener solo últimos 20 mensajes para no exceder límites
       const currentHistory = this.conversationHistory.get(userId)!;
       if (currentHistory.length > 20) {
-        this.conversationHistory.set(
-          userId,
-          currentHistory.slice(currentHistory.length - 20),
-        );
+        let slicedHistory = currentHistory.slice(currentHistory.length - 20);
+        slicedHistory = this.cleanHistory(slicedHistory);
+        this.conversationHistory.set(userId, slicedHistory);
+        this.logger.debug(`📦 Historial reducido a ${slicedHistory.length} mensajes`);
       }
 
       this.logger.log(`💬 Respuesta generada: ${finalText.substring(0, 100)}...`);
@@ -175,8 +179,42 @@ SÉ CONSULTIVO: ayudá al usuario a encontrar exactamente lo que busca.`,
       return finalText;
     } catch (error) {
       this.logger.error(`❌ Error procesando mensaje: ${error.message}`, error.stack);
+
+      // Si es el error de historial corrupto, resetear el historial del usuario
+      if (error.message?.includes('First content should be with role')) {
+        this.logger.warn(`🔄 Reseteando historial corrupto para usuario ${userId}`);
+        this.conversationHistory.delete(userId);
+        return 'Disculpa, tuve que reiniciar nuestra conversación. ¿En qué puedo ayudarte?';
+      }
+
       return 'Lo siento, tuve un problema procesando tu mensaje. ¿Podrías intentar de nuevo?';
     }
+  }
+
+  /**
+   * Limpia el historial para asegurar que cumple con los requisitos de Gemini
+   * El historial DEBE empezar con un mensaje de rol 'user'
+   */
+  private cleanHistory(history: any[]): any[] {
+    if (history.length === 0) {
+      return [];
+    }
+
+    // Si el primer mensaje no es de usuario, eliminar mensajes hasta encontrar uno
+    let cleanedHistory = [...history];
+
+    while (cleanedHistory.length > 0 && cleanedHistory[0].role !== 'user') {
+      this.logger.debug(`🧹 Eliminando mensaje inicial con rol: ${cleanedHistory[0].role}`);
+      cleanedHistory = cleanedHistory.slice(1);
+    }
+
+    // Si quedó vacío o no hay mensajes de usuario, retornar vacío
+    if (cleanedHistory.length === 0) {
+      this.logger.warn(`⚠️  Historial sin mensajes de usuario válidos, reseteado`);
+      return [];
+    }
+
+    return cleanedHistory;
   }
 
   /**
