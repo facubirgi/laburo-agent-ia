@@ -39,6 +39,28 @@ Solución completa del desafío de laburo.com: Un agente de IA conversacional ca
 🎁 **Validación de webhooks de Twilio** (seguridad)
 🎁 **Documentación exhaustiva**
 
+### Mejoras de UX del AI Agent
+
+🚀 **Conversaciones optimizadas para WhatsApp**
+- Respuestas concisas (máx 4-5 líneas)
+- Formato con *negrita* y bullets •
+- Límite de 5 productos por listado
+
+🚀 **Confirmaciones inteligentes**
+- Pide confirmación antes de crear/editar carritos
+- Muestra totales calculados antes de acciones
+- Valida stock disponible proactivamente
+
+🚀 **Contexto conversacional**
+- Entiende referencias: "el primero", "ese", "el mismo"
+- Mantiene tracking del último producto consultado
+- Historial robusto con auto-limpieza
+
+🚀 **Validaciones proactivas**
+- Sugiere mejor precio por volumen
+- Alerta cuando stock es insuficiente
+- Recomienda productos similares si no hay stock
+
 ---
 
 ## 🏗️ Arquitectura
@@ -318,19 +340,30 @@ Una vez configurado, envía mensajes al número de Twilio:
 
 ```
 Usuario: Hola
-Bot: ¡Hola! Soy tu asistente de ventas...
+Bot: Hola! ¿Qué tipo de prenda buscás?
+     Tengo pantalones, camisetas, chaquetas, sudaderas, camisas y faldas.
 
 Usuario: Busco pantalones verdes
-Bot: ¡Claro! Encontré 3 pantalones verdes...
+Bot: Encontré pantalones verdes:
+     *Pantalón Verde XXL* - desde $1058 (50u)
+     *Pantalón Verde L* - desde $1017 (50u)
+     *Pantalón Verde M* - desde $1338 (50u)
+     ¿Te interesa alguno?
 
 Usuario: Cuánto cuesta el primero?
-Bot: Los precios varían según cantidad:
-     - 50-99 unidades: $1500
-     - 100-199 unidades: $1300
-     - 200+ unidades: $1100
+Bot: *Pantalón Verde XXL*
+     • 50-99u: $1058 c/u
+     • 100-199u: $987 c/u
+     • 200+u: $915 c/u
+     Stock: 150 unidades
 
 Usuario: Quiero 100 unidades
-Bot: ¡Perfecto! Agregué 100 unidades al carrito...
+Bot: Confirmas 100u de *Pantalón Verde XXL* por $98,700?
+
+Usuario: Sí
+Bot: ✅ *Carrito #42 creado*
+     • 100u de Pantalón Verde XXL: $98,700
+     *Total: $98,700*
 ```
 
 ### Interactuar vía API REST
@@ -589,8 +622,12 @@ Este proyecto fue desarrollado como parte del challenge de laburo.com.
 | Validación de webhooks Twilio | ✅ | Security guard implementado |
 | Búsqueda avanzada | ✅ | Multi-campo con ILike |
 | Sistema de precios por volumen | ✅ | 3 niveles: 50u, 100u, 200u |
-| Historial de conversación | ✅ | Mantenido en memoria por usuario |
+| Historial de conversación | ✅ | Con auto-limpieza y validación robusta |
 | Documentación exhaustiva | ✅ | README + manual testing + diseño conceptual |
+| **Confirmaciones inteligentes** | ✅ | Antes de crear/editar carritos con totales |
+| **Formato optimizado WhatsApp** | ✅ | Negrita, bullets, máx 5 productos |
+| **Contexto conversacional** | ✅ | Entiende "el primero", "ese", referencias |
+| **Validaciones proactivas** | ✅ | Stock, sugerencias de volumen, productos similares |
 
 ---
 
